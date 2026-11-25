@@ -4,14 +4,15 @@ from itertools import groupby
 
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 
 from inventario.carga import ErrorCarga, carga_siguiente, importar_excel, recalcular_variacion
-from inventario.models import CargaInventario, ItemInventario, margen_actual
-from inventario.referencias import listar_referencias
+from inventario.models import CargaInventario, ItemInventario, PrecioReferencia, margen_actual
+from inventario.referencias import listar_referencias, precios_de, promedio
+from inventario.templatetags.inventario_extras import en_miles, peso
 from inventario.seleccion import etiqueta_bodega, orden_bodega
 
 
@@ -78,9 +79,11 @@ def descargar(request):
             "Existencia",
             "Costo",
             "Difusión",
-            "Promediado",
+            "Renta",
+            "Margen %",
             "Precio mínimo",
             "Precio máximo",
+            "Promediado",
             "Variación",
         ]
     )
@@ -101,9 +104,11 @@ def descargar(request):
                 float(fila.existencia),
                 float(fila.costo),
                 float(fila.difusion),
-                "Sí" if fila.promediado else "No",
+                float(fila.renta),
+                float(fila.margen_porcentaje),
                 float(fila.precio_minimo),
                 float(fila.precio_maximo),
+                "Sí" if fila.promediado else "No",
                 fila.get_variacion_display(),
             ]
         )
@@ -168,9 +173,56 @@ def guardar_margenes(request):
     margen.save()
     messages.success(
         request,
-        f"Precio de venta: mínimo {margen.porcentaje_minimo}% y máximo {margen.porcentaje_maximo}% sobre el costo.",
+        f"Rango sobre el costo: mínimo {margen.porcentaje_minimo}% y máximo {margen.porcentaje_maximo}%.",
     )
     return redirect(destino)
+
+
+@require_POST
+def guardar_precio(request):
+    codigo = (request.POST.get("codigo") or "").strip()
+    campo = request.POST.get("campo") or ""
+    if campo not in {"difusion", "renta", "margen"}:
+        return JsonResponse({"error": "Ese dato no se puede editar."}, status=400)
+
+    if request.POST.get("carga"):
+        carga = get_object_or_404(CargaInventario, pk=request.POST.get("carga"))
+    else:
+        carga = CargaInventario.objects.first()
+    if carga is None:
+        return JsonResponse({"error": "No hay inventario cargado."}, status=404)
+
+    items = list(carga.items.filter(codigo=codigo))
+    if not items:
+        return JsonResponse({"error": "Ese código no está en este corte."}, status=404)
+    costo = promedio(item.costo for item in items)
+    if costo <= 0:
+        return JsonResponse({"error": "El costo de este producto es cero."}, status=400)
+
+    try:
+        valor = Decimal((request.POST.get("valor") or "").replace(",", ".").replace("%", ""))
+    except InvalidOperation:
+        return JsonResponse({"error": "Escribe un número."}, status=400)
+
+    rango = margen_actual()
+    ajuste, _ = PrecioReferencia.objects.get_or_create(codigo=codigo)
+    operativo = ajuste.margen if ajuste.margen is not None else rango.porcentaje_minimo
+
+    if campo == "margen":
+        operativo = valor
+    elif campo == "difusion":
+        base = (valor * Decimal(1000) / Decimal("1.01")).quantize(Decimal("0.01"))
+        operativo = (base / costo - 1) * Decimal(100)
+    else:
+        operativo = valor * Decimal(1000) / costo * Decimal(100)
+
+    operativo = operativo.quantize(Decimal("0.01"))
+    if operativo < 0 or operativo > 1000:
+        return JsonResponse({"error": "El porcentaje tiene que estar entre 0 y 1000."}, status=400)
+
+    ajuste.margen = operativo
+    ajuste.save()
+    return _respuesta_precios(costo, operativo, rango.porcentaje_minimo, rango.porcentaje_maximo)
 
 
 def historial(request, codigo):
@@ -204,7 +256,8 @@ def historial(request, codigo):
 def listar_referencias_de(filas, margen):
     from inventario.referencias import Referencia
 
-    return Referencia(filas, margen)
+    ajuste = PrecioReferencia.objects.filter(codigo=filas[0].codigo).first()
+    return Referencia(filas, margen, ajuste)
 
 
 def _filtros(request):
@@ -240,6 +293,28 @@ def _destino(valor):
     if not destino.startswith("/") or destino.startswith("//"):
         return "/"
     return destino
+
+
+def _respuesta_precios(costo, margen_operativo, porcentaje_minimo, porcentaje_maximo):
+    datos = precios_de(costo, margen_operativo, porcentaje_minimo, porcentaje_maximo)
+    return JsonResponse(
+        {
+            "texto": {
+                "difusion": peso(datos["difusion"]),
+                "minimo": peso(datos["minimo"]),
+                "maximo": peso(datos["maximo"]),
+                "renta": peso(datos["renta"]),
+                "margen": f"{datos['margen']}%",
+            },
+            "valor": {
+                "difusion": en_miles(datos["difusion"]),
+                "minimo": en_miles(datos["minimo"]),
+                "maximo": en_miles(datos["maximo"]),
+                "renta": en_miles(datos["renta"]),
+                "margen": f"{datos['margen']:.2f}",
+            },
+        }
+    )
 
 
 def _entero(valor):

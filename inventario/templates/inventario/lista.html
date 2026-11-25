@@ -64,7 +64,7 @@
         <strong>Aplicar %</strong>
         <button class="boton boton-secundario" id="cerrar-margenes" type="button">Cerrar</button>
       </div>
-      <p class="resumen">Mínimo y máximo se calculan sobre difusión, el costo más 1%.</p>
+      <p class="resumen">Mínimo y máximo arman el rango sobre el costo. La renta es el mínimo menos el costo y la difusión es ese mínimo más 1%.</p>
       <label class="campo">Mínimo
         <input name="minimo" type="number" min="0" max="100" step="0.01" value="{{ margen.porcentaje_minimo|unlocalize }}" inputmode="decimal" required>
       </label>
@@ -149,7 +149,7 @@
                 <td>{% include "inventario/_ficha.html" %}</td>
                 <td>{% include "inventario/_sedes.html" %}</td>
                 <td>{% include "inventario/_variacion.html" %}</td>
-                <td>{% include "inventario/_precios.html" %}</td>
+                <td>{% include "inventario/_precios.html" with editar=True %}</td>
                 <td>{% include "inventario/_existencia.html" %}</td>
               </tr>
             {% endfor %}
@@ -172,6 +172,7 @@
             {% include "inventario/_sedes.html" %}
             {% include "inventario/_variacion.html" %}
             {% include "inventario/_precios.html" %}
+            <button class="boton boton-secundario editar-precios" type="button" data-codigo="{{ item.codigo }}" data-nombre="{{ item.nombre }}">Editar precios</button>
           </article>
         {% endfor %}
       </div>
@@ -200,6 +201,24 @@
         <textarea class="texto-mensaje" id="texto-mensaje" rows="14" aria-label="Mensaje de difusión"></textarea>
         <a class="boton boton-whatsapp" id="enviar-whatsapp" target="_blank" rel="noopener">WhatsApp</a>
       </aside>
+      <aside class="panel-lateral" id="editar-precios">
+        <div class="panel-tope">
+          <strong id="editar-nombre">Editar precios</strong>
+          <button class="boton boton-secundario" id="cerrar-precios" type="button">Cerrar</button>
+        </div>
+        <p class="resumen">El costo llega del Excel. Mínimo y máximo son el rango: cambian con Aplicar %. Si mueves el margen, la renta o la difusión, se recalculan entre sí.</p>
+        <p class="costo" id="editar-costo"></p>
+        <p class="error-precio" id="error-precio"></p>
+        <label class="campo">Difusión
+          <input class="precio-campo" id="editar-difusion" type="number" min="0" step="1" inputmode="numeric" data-campo="difusion">
+        </label>
+        <label class="campo">Renta
+          <input class="precio-campo" id="editar-renta" type="number" min="0" step="1" inputmode="numeric" data-campo="renta">
+        </label>
+        <label class="campo">Margen %
+          <input class="precio-campo" id="editar-margen" type="number" min="0" max="1000" step="0.01" inputmode="decimal" data-campo="margen">
+        </label>
+      </aside>
     {% else %}
       <section class="vacio vacio-compacto">
         <h2>Ningún producto coincide</h2>
@@ -215,10 +234,11 @@
       const panelFiltros = document.getElementById("filtros");
       const panelMargenes = document.getElementById("margenes");
       const panelMensaje = document.getElementById("mensaje");
+      const panelPrecios = document.getElementById("editar-precios");
       const textoMensaje = document.getElementById("texto-mensaje");
       const enviarWhatsapp = document.getElementById("enviar-whatsapp");
       function cerrarPaneles() {
-        [panelFiltros, panelMargenes, panelMensaje].forEach(function (panel) {
+        [panelFiltros, panelMargenes, panelMensaje, panelPrecios].forEach(function (panel) {
           if (panel) panel.classList.remove("abierto");
         });
         fondo.classList.remove("visible");
@@ -313,6 +333,104 @@
       if (textoMensaje) {
         textoMensaje.addEventListener("input", function () { publicarWhatsapp(textoMensaje.value); });
       }
+
+      const cargaId = "{{ carga.pk }}";
+      function tokenCsrf() {
+        const campo = document.querySelector("[name=csrfmiddlewaretoken]");
+        return campo ? campo.value : "";
+      }
+      function aplicarPrecios(codigo, datos) {
+        document.querySelectorAll('.precios[data-codigo="' + codigo + '"] [data-precio]').forEach(function (nodo) {
+          const clave = nodo.dataset.precio;
+          const fijo = nodo.querySelector(".precio-fijo");
+          if (fijo && datos.valor[clave]) fijo.textContent = datos.valor[clave];
+          if (datos.valor[clave]) nodo.dataset.miles = datos.valor[clave];
+        });
+        document.querySelectorAll('.precio-campo[data-codigo="' + codigo + '"]').forEach(function (input) {
+          const valor = datos.valor[input.dataset.campo];
+          if (valor === undefined || input === document.activeElement) return;
+          input.value = valor;
+          input.dataset.previo = valor;
+        });
+        document.querySelectorAll('.marcar[data-codigo="' + codigo + '"]').forEach(function (marca) {
+          marca.dataset.precio = datos.texto.difusion;
+        });
+        if (panelPrecios && panelPrecios.dataset.codigo === codigo) {
+          ["difusion", "renta", "margen"].forEach(function (campo) {
+            const input = document.getElementById("editar-" + campo);
+            if (input && input !== document.activeElement) {
+              input.value = datos.valor[campo];
+              input.dataset.previo = datos.valor[campo];
+            }
+          });
+        }
+      }
+      function guardarPrecio(input) {
+        const codigo = input.dataset.codigo || (panelPrecios && panelPrecios.dataset.codigo);
+        const error = document.getElementById("error-precio");
+        if (error) error.textContent = "";
+        const cuerpo = new FormData();
+        cuerpo.append("codigo", codigo);
+        cuerpo.append("campo", input.dataset.campo);
+        cuerpo.append("valor", input.value);
+        cuerpo.append("carga", cargaId);
+        input.disabled = true;
+        fetch("{% url 'inventario:precios' %}", {
+          method: "POST",
+          headers: { "X-CSRFToken": tokenCsrf() },
+          body: cuerpo
+        }).then(function (respuesta) {
+          return respuesta.json().then(function (datos) {
+            return { ok: respuesta.ok, datos: datos };
+          });
+        }).then(function (resultado) {
+          input.disabled = false;
+          if (!resultado.ok) {
+            input.value = input.dataset.previo || input.value;
+            input.setCustomValidity(resultado.datos.error || "No se pudo guardar.");
+            input.reportValidity();
+            if (error) error.textContent = resultado.datos.error || "";
+            return;
+          }
+          input.setCustomValidity("");
+          aplicarPrecios(codigo, resultado.datos);
+          const normalizado = resultado.datos.valor[input.dataset.campo];
+          if (normalizado !== undefined) input.value = normalizado;
+          input.dataset.previo = input.value;
+        }).catch(function () {
+          input.disabled = false;
+          input.value = input.dataset.previo || input.value;
+        });
+      }
+      document.addEventListener("focusin", function (evento) {
+        const input = evento.target.closest ? evento.target.closest(".precio-campo") : null;
+        if (input) input.dataset.previo = input.value;
+      });
+      document.addEventListener("change", function (evento) {
+        const input = evento.target.closest ? evento.target.closest(".precio-campo") : null;
+        if (!input || input.value === input.dataset.previo) return;
+        guardarPrecio(input);
+      });
+      document.querySelectorAll(".editar-precios").forEach(function (boton) {
+        boton.addEventListener("click", function () {
+          const tarjeta = boton.closest(".tarjeta");
+          const precios = tarjeta.querySelector(".precios");
+          panelPrecios.dataset.codigo = boton.dataset.codigo;
+          document.getElementById("editar-nombre").textContent = boton.dataset.nombre;
+          document.getElementById("editar-costo").textContent = precios.querySelector('[data-precio="costo"]').dataset.texto;
+          document.getElementById("error-precio").textContent = "";
+          ["difusion", "renta", "margen"].forEach(function (campo) {
+            const origen = precios.querySelector('[data-precio="' + campo + '"]');
+            const input = document.getElementById("editar-" + campo);
+            input.dataset.codigo = boton.dataset.codigo;
+            input.value = origen.dataset.miles;
+            input.dataset.previo = origen.dataset.miles;
+            input.setCustomValidity("");
+          });
+          abrirPanel(panelPrecios);
+        });
+      });
+      document.getElementById("cerrar-precios").addEventListener("click", cerrarPaneles);
     </script>
   {% endif %}
 {% endblock %}

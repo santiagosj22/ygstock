@@ -1,19 +1,75 @@
-{% load inventario_extras %}
-<dl class="precios">
+{% load inventario_extras l10n %}
+<dl class="precios{% if editar %} precios-editables{% endif %}" data-codigo="{{ item.codigo }}">
   <div>
     <dt {% if item.promediado %}title="Las sedes tienen costos distintos, este valor es el promedio"{% endif %}>{% if item.promediado %}Costo promedio{% else %}Costo{% endif %}</dt>
-    <dd class="costo">{{ item.costo|peso }}</dd>
+    <dd class="precio-valor" data-precio="costo" data-texto="{{ item.costo|peso }}">
+      <span class="signo">$</span>
+      <span class="precio-fijo">{{ item.costo|miles }}</span>
+      <span class="sufijo"></span>
+    </dd>
   </div>
   <div>
     <dt>Difusión</dt>
-    <dd>{{ item.difusion|peso }}</dd>
+    {% if editar %}
+      <dd class="precio-valor">
+        <span class="signo">$</span>
+        <input class="precio-campo" type="number" min="0" step="1" inputmode="numeric" data-codigo="{{ item.codigo }}" data-campo="difusion" value="{{ item.difusion|miles }}" aria-label="Difusión de {{ item.nombre }}">
+        <span class="sufijo"></span>
+      </dd>
+    {% else %}
+      <dd class="precio-valor" data-precio="difusion" data-miles="{{ item.difusion|miles }}">
+        <span class="signo">$</span>
+        <span class="precio-fijo">{{ item.difusion|miles }}</span>
+        <span class="sufijo"></span>
+      </dd>
+    {% endif %}
   </div>
   <div>
     <dt>Mínimo</dt>
-    <dd>{{ item.precio_minimo|peso }}</dd>
+    <dd class="precio-valor" data-precio="minimo" data-miles="{{ item.precio_minimo|miles }}">
+      <span class="signo">$</span>
+      <span class="precio-fijo">{{ item.precio_minimo|miles }}</span>
+      <span class="sufijo"></span>
+    </dd>
   </div>
   <div>
     <dt>Máximo</dt>
-    <dd>{{ item.precio_maximo|peso }}</dd>
+    <dd class="precio-valor" data-precio="maximo" data-miles="{{ item.precio_maximo|miles }}">
+      <span class="signo">$</span>
+      <span class="precio-fijo">{{ item.precio_maximo|miles }}</span>
+      <span class="sufijo"></span>
+    </dd>
+  </div>
+  <div>
+    <dt>Renta</dt>
+    {% if editar %}
+      <dd class="precio-valor">
+        <span class="signo">$</span>
+        <input class="precio-campo" type="number" min="0" step="1" inputmode="numeric" data-codigo="{{ item.codigo }}" data-campo="renta" value="{{ item.renta|miles }}" aria-label="Renta de {{ item.nombre }}">
+        <span class="sufijo"></span>
+      </dd>
+    {% else %}
+      <dd class="precio-valor" data-precio="renta" data-miles="{{ item.renta|miles }}">
+        <span class="signo">$</span>
+        <span class="precio-fijo">{{ item.renta|miles }}</span>
+        <span class="sufijo"></span>
+      </dd>
+    {% endif %}
+  </div>
+  <div>
+    <dt>Margen</dt>
+    {% if editar %}
+      <dd class="precio-valor">
+        <span class="signo"></span>
+        <input class="precio-campo" type="number" min="0" max="1000" step="0.01" inputmode="decimal" data-codigo="{{ item.codigo }}" data-campo="margen" value="{{ item.margen_porcentaje|unlocalize }}" aria-label="Margen de {{ item.nombre }}">
+        <span class="sufijo">%</span>
+      </dd>
+    {% else %}
+      <dd class="precio-valor" data-precio="margen" data-miles="{{ item.margen_porcentaje|unlocalize }}">
+        <span class="signo"></span>
+        <span class="precio-fijo">{{ item.margen_porcentaje|unlocalize }}</span>
+        <span class="sufijo">%</span>
+      </dd>
+    {% endif %}
   </div>
 </dl>

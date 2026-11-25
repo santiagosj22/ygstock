@@ -392,28 +392,91 @@ nav a.activo:not(.boton) { background: #efeae2; }
 
 .precios {
   display: grid;
-  gap: 0.18rem;
+  grid-template-columns: max-content max-content 1.15rem max-content max-content;
+  column-gap: 0.45rem;
+  row-gap: 0.28rem;
   margin: 0;
+  align-items: center;
 }
 
 .precios div {
   display: grid;
-  grid-template-columns: max-content max-content;
-  justify-content: space-between;
-  gap: 0.85rem;
-  align-items: baseline;
+  grid-template-columns: subgrid;
+  align-items: center;
 }
+
+.precios div:nth-child(odd) { grid-column: 1 / 3; }
+.precios div:nth-child(even) { grid-column: 4 / 6; }
 
 .precios dt {
   margin: 0;
   color: var(--suave);
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .precios dd {
   margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.precio-valor {
+  display: grid;
+  grid-template-columns: 0.75rem 4.4rem auto;
+  align-items: center;
+  column-gap: 0.15rem;
+}
+
+.precio-fijo {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.signo,
+.sufijo {
+  color: var(--suave);
+}
+
+.sufijo:empty { display: none; }
+
+.precio-campo {
+  width: 100%;
+  min-width: 0;
+  padding: 0.15rem 0.2rem;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.precio-campo::-webkit-outer-spin-button,
+.precio-campo::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.precio-campo:hover,
+.precio-campo:focus {
+  border-color: var(--linea);
+  background: #fff;
+  outline: none;
+}
+
+.campo .precio-campo { width: 100%; }
+
+.editar-precios { width: 100%; margin-top: 0.75rem; }
+
+.error-precio:empty { display: none; }
+
+.error-precio {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.85rem;
 }
 
 .marca-promedio {
@@ -717,14 +780,8 @@ nav a.activo:not(.boton) { background: #efeae2; }
     min-height: 52px;
     font-size: 0.72rem;
   }
-  .precios {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.55rem 0.8rem;
-  }
-  .precios div {
-    justify-content: start;
-    gap: 0.35rem;
-  }
+  .precios { column-gap: 0.3rem; row-gap: 0.4rem; }
+  .precios div:nth-child(even) { margin-left: 0.2rem; }
   .campo-buscar { grid-column: auto; }
   .pagina { width: min(1320px, calc(100% - 1.2rem)); padding-bottom: 5.5rem; }
   .barra-difusion { bottom: 4.7rem; }

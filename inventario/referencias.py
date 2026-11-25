@@ -2,12 +2,12 @@
 
 from decimal import Decimal
 
-from inventario.models import ItemInventario
+from inventario.models import ItemInventario, PrecioReferencia
 from inventario.seleccion import etiqueta_bodega, orden_bodega
 
 
 class Referencia:
-    def __init__(self, items, margen):
+    def __init__(self, items, margen, ajuste=None):
         items = sorted(items, key=lambda item: (orden_bodega(item.bodega), item.bodega))
         base = items[0]
         self.carga = base.carga
@@ -24,7 +24,6 @@ class Referencia:
         costos = [item.costo for item in items]
         self.costo = promedio(costos)
         self.promediado = len(set(costos)) > 1
-        self.difusion = aplicar_margen(self.costo, Decimal("1"))
         self.existencia = sum((item.existencia for item in items), Decimal("0"))
         self.costo_anterior = base.costo_anterior
         self.diferencia = base.diferencia
@@ -37,8 +36,20 @@ class Referencia:
             }
             for item in items
         ]
-        self.precio_minimo = aplicar_margen(self.difusion, margen.porcentaje_minimo)
-        self.precio_maximo = aplicar_margen(self.difusion, margen.porcentaje_maximo)
+        operativo = (
+            ajuste.margen if ajuste and ajuste.margen is not None else margen.porcentaje_minimo
+        )
+        precios = precios_de(
+            self.costo,
+            operativo,
+            margen.porcentaje_minimo,
+            margen.porcentaje_maximo,
+        )
+        self.margen_porcentaje = precios["margen"]
+        self.precio_minimo = precios["minimo"]
+        self.precio_maximo = precios["maximo"]
+        self.renta = precios["renta"]
+        self.difusion = precios["difusion"]
 
     def get_variacion_display(self):
         return dict(ItemInventario.Variacion.choices).get(self.variacion, self.variacion)
@@ -82,7 +93,13 @@ def listar_referencias(carga, filtros, margen):
                 if any(getattr(fila, campo) == valor for fila in por_codigo[codigo])
             }
 
-    referencias = [Referencia(por_codigo[codigo], margen) for codigo in codigos]
+    ajustes = {
+        fila.codigo: fila
+        for fila in PrecioReferencia.objects.filter(codigo__in=codigos)
+    }
+    referencias = [
+        Referencia(por_codigo[codigo], margen, ajustes.get(codigo)) for codigo in codigos
+    ]
     variacion = filtros.get("variacion") or ""
     if variacion:
         referencias = [fila for fila in referencias if fila.variacion == variacion]
@@ -104,6 +121,19 @@ def promedio(costos):
 
 def aplicar_margen(costo, porcentaje):
     return (costo * (Decimal("1") + Decimal(porcentaje) / Decimal("100"))).quantize(Decimal("0.01"))
+
+
+def precios_de(costo, margen_operativo, porcentaje_minimo, porcentaje_maximo):
+    """Mínimo y máximo son el rango. La renta sale del margen y la difusión es ese precio más 1%."""
+
+    base = aplicar_margen(costo, margen_operativo)
+    return {
+        "margen": Decimal(margen_operativo).quantize(Decimal("0.01")),
+        "minimo": aplicar_margen(costo, porcentaje_minimo),
+        "maximo": aplicar_margen(costo, porcentaje_maximo),
+        "renta": (base - costo).quantize(Decimal("0.01")),
+        "difusion": (base * Decimal("1.01")).quantize(Decimal("0.01")),
+    }
 
 
 def _primero(items, campo):

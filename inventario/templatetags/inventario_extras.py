@@ -42,6 +42,21 @@ PUNTOS = {
 
 
 @register.filter
+def en_miles(valor):
+    if valor is None or valor == "":
+        return ""
+    numero = Decimal(str(valor))
+    miles = (abs(numero) / Decimal(1000)).to_integral_value(rounding=ROUND_CEILING)
+    signo = "-" if numero < 0 else ""
+    return f"{signo}{int(miles)}"
+
+
+@register.filter
+def miles(valor):
+    return en_miles(valor)
+
+
+@register.filter
 def peso(valor):
     if valor is None or valor == "":
         return "—"

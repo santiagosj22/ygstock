@@ -309,8 +309,8 @@ class CargaTests(TestCase):
         self.assertContains(respuesta, 'class="punto"')
         self.assertContains(respuesta, "Primera vez")
         self.assertContains(respuesta, "Difusión")
-        self.assertContains(respuesta, "$ 1")
-        self.assertContains(respuesta, "$ 2")
+        self.assertContains(respuesta, 'class="precio-fijo">1<')
+        self.assertContains(respuesta, 'class="precio-fijo">2<')
         self.assertNotContains(respuesta, "Costo promedio")
         self.assertContains(respuesta, "Centro")
         self.assertContains(respuesta, 'class="marcar"')
@@ -333,7 +333,7 @@ class CargaTests(TestCase):
             )
         )
         respuesta = self.client.get("/")
-        self.assertContains(respuesta, "$ 1")
+        self.assertContains(respuesta, 'class="precio-fijo">1<')
         self.assertContains(respuesta, "Monterrey")
         self.assertContains(respuesta, "Almacenamiento")
         self.assertContains(respuesta, "Costo promedio")
@@ -360,8 +360,10 @@ class CargaTests(TestCase):
         filas = list(libro.active.iter_rows(values_only=True))
         self.assertEqual(filas[1][0], "0001")
         self.assertEqual(filas[1][10], 325)
-        self.assertEqual(filas[1][11], 328.25)
-        self.assertEqual(filas[1][12], "Sí")
+        self.assertEqual(filas[1][11], 334.82)
+        self.assertEqual(filas[1][12], 6.5)
+        self.assertEqual(filas[1][13], 2)
+        self.assertEqual(filas[1][16], "Sí")
         self.assertEqual(len(filas), 2)
 
     def test_los_margenes_se_pueden_cambiar(self):
@@ -375,8 +377,36 @@ class CargaTests(TestCase):
         respuesta = self.client.post("/margenes/", {"minimo": "10", "maximo": "20", "siguiente": "/"})
         self.assertEqual(respuesta.status_code, 302)
         pagina = self.client.get("/")
-        self.assertContains(pagina, "$ 1.111")
-        self.assertContains(pagina, "$ 1.212")
+        self.assertContains(pagina, 'class="precio-fijo">1100<')
+        self.assertContains(pagina, 'class="precio-fijo">1111<')
+        self.assertContains(pagina, 'class="precio-fijo">1200<')
+
+    def test_editar_el_margen_recalcula_difusion_y_renta(self):
+        importar_excel(
+            _excel(
+                [("0001", "iPhone", "CELULAR APPLE IPHONE 15 5G 6+128GB E-SIM AZUL NUEVO", "CELULARES", "4-MONTERREY", 1000000, 1)],
+                "2026-11-24 7:38 pm",
+                "informe.xlsx",
+            )
+        )
+        respuesta = self.client.post("/precios/", {"codigo": "0001", "campo": "margen", "valor": "4"})
+        self.assertEqual(respuesta.status_code, 200)
+        datos = respuesta.json()
+        self.assertEqual(datos["texto"]["minimo"], "$ 1.020")
+        self.assertEqual(datos["texto"]["maximo"], "$ 1.040")
+        self.assertEqual(datos["texto"]["difusion"], "$ 1.051")
+        self.assertEqual(datos["texto"]["renta"], "$ 40")
+        self.assertEqual(datos["texto"]["margen"], "4.00%")
+        self.assertEqual(ItemInventario.objects.get(codigo="0001").costo, Decimal("1000000.00"))
+
+        difundido = self.client.post("/precios/", {"codigo": "0001", "campo": "difusion", "valor": "1051"})
+        self.assertEqual(difundido.status_code, 200)
+        self.assertEqual(difundido.json()["texto"]["margen"], "4.06%")
+        self.assertEqual(ItemInventario.objects.get(codigo="0001").costo, Decimal("1000000.00"))
+
+        pagina = self.client.get("/")
+        self.assertContains(pagina, "Editar precios")
+        self.assertContains(pagina, 'data-campo="renta"')
 
     def test_depura_familias_y_bodegas_que_no_entran(self):
         carga = importar_excel(

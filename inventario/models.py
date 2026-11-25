@@ -26,6 +26,21 @@ def margen_actual():
     return margen
 
 
+class PrecioReferencia(models.Model):
+    """Margen definitivo de un código. Vacío significa que sigue el rango global."""
+
+    codigo = models.CharField(max_length=64, unique=True)
+    margen = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    porcentaje_maximo = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "precio de referencia"
+        verbose_name_plural = "precios de referencia"
+
+    def __str__(self):
+        return self.codigo
+
+
 class CargaInventario(models.Model):
     archivo = models.CharField(max_length=255)
     fecha_corte = models.DateTimeField()
