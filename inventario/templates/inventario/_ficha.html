@@ -1,0 +1,11 @@
+{% load inventario_extras %}
+<div class="fichas">
+  {% if item.color %}
+    <span class="punto" title="{{ item.color }}" aria-label="{{ item.color }}" style="background: {{ item.color|punto_color }}"></span>
+  {% endif %}
+  {% if item.clase %}<span class="ficha">{{ item.clase }}</span>{% endif %}
+  {% if item.red %}<span class="ficha">{{ item.red }}</span>{% endif %}
+  {% if item.tipo_sim %}<span class="ficha">{{ item.tipo_sim }}</span>{% endif %}
+  {% if item.ram %}<span class="ficha">RAM {{ item.ram }}</span>{% endif %}
+  {% if item.almacenamiento %}<span class="ficha">{{ item.almacenamiento }}</span>{% endif %}
+</div>

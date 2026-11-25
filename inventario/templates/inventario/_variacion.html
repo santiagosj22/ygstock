@@ -1,0 +1,16 @@
+{% load inventario_extras %}
+<span class="variacion variacion-{{ item.variacion }}" title="{{ item.get_variacion_display }}" aria-label="{{ item.get_variacion_display }}">
+  {% if item.variacion == "subio" %}
+    <svg class="icono" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  {% elif item.variacion == "bajo" %}
+    <svg class="icono" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  {% elif item.variacion == "igual" %}
+    <svg class="icono" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6h10M3 10h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  {% else %}
+    <svg class="icono" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6 9.15 6.1 13.6 8 9.15 9.9 8 14.4 6.85 9.9 2.4 8l4.45-1.9L8 1.6Z" fill="currentColor"/></svg>
+  {% endif %}
+  {% if item.diferencia %}
+    <strong>{{ item.diferencia|delta }}</strong>
+    {% if item.porcentaje %}<small>{{ item.porcentaje|floatformat:1 }}%</small>{% endif %}
+  {% endif %}
+</span>

@@ -1,0 +1,19 @@
+{% load inventario_extras %}
+<dl class="precios">
+  <div>
+    <dt {% if item.promediado %}title="Las sedes tienen costos distintos, este valor es el promedio"{% endif %}>{% if item.promediado %}Costo promedio{% else %}Costo{% endif %}</dt>
+    <dd class="costo">{{ item.costo|peso }}</dd>
+  </div>
+  <div>
+    <dt>Difusión</dt>
+    <dd>{{ item.difusion|peso }}</dd>
+  </div>
+  <div>
+    <dt>Mínimo</dt>
+    <dd>{{ item.precio_minimo|peso }}</dd>
+  </div>
+  <div>
+    <dt>Máximo</dt>
+    <dd>{{ item.precio_maximo|peso }}</dd>
+  </div>
+</dl>

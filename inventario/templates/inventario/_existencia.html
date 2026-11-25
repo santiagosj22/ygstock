@@ -1,0 +1,2 @@
+{% load inventario_extras %}
+<span class="existencia{% if not item.existencia %} existencia-cero{% endif %}">{{ item.existencia|cantidad }}</span>

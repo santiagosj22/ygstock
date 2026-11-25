@@ -1,0 +1,77 @@
+{% extends "inventario/base.html" %}
+{% load inventario_extras %}
+
+{% block titulo %}{{ producto.nombre }}{% endblock %}
+
+{% block contenido %}
+  <p class="volver">
+    <a href="{% url 'inventario:lista' %}{% if request.GET.carga %}?carga={{ request.GET.carga }}{% endif %}">Volver al inventario</a>
+  </p>
+  <header class="encabezado">
+    <div>
+      {% if producto.familia %}<p class="kicker">{{ producto.familia }}</p>{% endif %}
+      <h1>{{ producto.nombre }}</h1>
+      <p class="codigo">{{ codigo }}</p>
+      {% include "inventario/_ficha.html" with item=producto %}
+    </div>
+  </header>
+
+  <section class="panel">
+    <h2>Costo por corte</h2>
+    <div class="serie" aria-hidden="true">
+      {% for grupo in grupos %}
+        <div class="serie-punto" title="{{ grupo.carga.fecha_corte|date:'d/m/Y' }} {{ grupo.costo|peso }}">
+          <div class="serie-barra serie-{{ grupo.variacion }}" style="height: {{ grupo.altura }}%"></div>
+          <span>{{ grupo.carga.fecha_corte|date:"d/m" }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="tabla-wrap solo-escritorio">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Corte</th>
+          <th>Clase</th>
+          <th class="num">Costo</th>
+          <th>Variación</th>
+          <th class="num">Existencia</th>
+          <th>Bodegas</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for grupo in grupos %}
+          <tr>
+            <td>{{ grupo.carga.fecha_corte|date:"d/m/Y H:i" }}</td>
+            <td>{{ grupo.clase|default:"—" }}</td>
+            <td class="num costo">{{ grupo.costo|peso }}{% if grupo.promediado %}<small class="marca-promedio">Promedio</small>{% endif %}</td>
+            <td>{% include "inventario/_variacion.html" with item=grupo %}</td>
+            <td class="num">{{ grupo.existencia|cantidad }}</td>
+            <td>{% include "inventario/_sedes.html" with item=grupo %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tarjetas solo-movil">
+    {% for grupo in grupos %}
+      <article class="tarjeta">
+        <div class="tarjeta-tope">
+          <p class="familia">{{ grupo.carga.fecha_corte|date:"d/m/Y H:i" }}</p>
+          {% include "inventario/_variacion.html" with item=grupo %}
+        </div>
+        <p class="costo costo-grande">{{ grupo.costo|peso }}{% if grupo.promediado %} <small class="marca-promedio">Promedio</small>{% endif %}</p>
+        {% if grupo.diferencia %}
+          <p class="delta-linea">{{ grupo.diferencia|delta }}{% if grupo.porcentaje %} · {{ grupo.porcentaje|floatformat:1 }}%{% endif %}</p>
+        {% endif %}
+        <dl class="tarjeta-datos">
+          <div><dt>Clase</dt><dd>{{ grupo.clase|default:"—" }}</dd></div>
+          <div><dt>Existencia</dt><dd>{{ grupo.existencia|cantidad }}</dd></div>
+        </dl>
+        {% include "inventario/_sedes.html" with item=grupo %}
+      </article>
+    {% endfor %}
+  </div>
+{% endblock %}

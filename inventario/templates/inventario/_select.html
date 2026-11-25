@@ -1,0 +1,9 @@
+<label class="campo">
+  {{ etiqueta }}
+  <select name="{{ nombre }}">
+    <option value="">Todos</option>
+    {% for opcion in opciones %}
+      <option value="{{ opcion }}" {% if valor == opcion %}selected{% endif %}>{{ opcion }}</option>
+    {% endfor %}
+  </select>
+</label>

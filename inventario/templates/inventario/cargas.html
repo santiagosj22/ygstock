@@ -1,0 +1,75 @@
+{% extends "inventario/base.html" %}
+
+{% block titulo %}Cargas{% endblock %}
+
+{% block contenido %}
+  <header class="encabezado">
+    <div>
+      <p class="kicker">Historial de cortes</p>
+      <h1>Cargas</h1>
+      <p class="resumen">Cada Excel queda guardado. Abrir uno muestra el inventario de ese momento.</p>
+    </div>
+    <a class="boton" href="{% url 'inventario:cargar' %}">Cargar Excel</a>
+  </header>
+
+  {% if not cargas %}
+    <section class="vacio">
+      <h2>Todavía no hay cargas</h2>
+      <a class="boton" href="{% url 'inventario:cargar' %}">Cargar Excel</a>
+    </section>
+  {% else %}
+    <div class="tabla-wrap solo-escritorio">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Corte</th>
+            <th>Archivo</th>
+            <th class="num">Productos</th>
+            <th class="num">Subieron</th>
+            <th class="num">Bajaron</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for carga in cargas %}
+            <tr>
+              <td>{{ carga.fecha_corte|date:"d/m/Y H:i" }}</td>
+              <td>{{ carga.archivo }}</td>
+              <td class="num">{{ carga.productos }}</td>
+              <td class="num">{{ carga.subieron }}</td>
+              <td class="num">{{ carga.bajaron }}</td>
+              <td class="acciones">
+                <a class="boton boton-secundario" href="{% url 'inventario:lista' %}?carga={{ carga.pk }}">Ver</a>
+                <form method="post" action="{% url 'inventario:eliminar_carga' carga.pk %}" onsubmit="return confirm('¿Eliminar esta carga?');">
+                  {% csrf_token %}
+                  <button class="boton boton-peligro" type="submit">Eliminar</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tarjetas solo-movil">
+      {% for carga in cargas %}
+        <article class="tarjeta">
+          <p class="familia">{{ carga.fecha_corte|date:"d/m/Y H:i" }}</p>
+          <h2 class="nombre">{{ carga.archivo }}</h2>
+          <dl class="tarjeta-datos">
+            <div><dt>Productos</dt><dd>{{ carga.productos }}</dd></div>
+            <div><dt>Subieron</dt><dd>{{ carga.subieron }}</dd></div>
+            <div><dt>Bajaron</dt><dd>{{ carga.bajaron }}</dd></div>
+          </dl>
+          <div class="acciones">
+            <a class="boton boton-secundario" href="{% url 'inventario:lista' %}?carga={{ carga.pk }}">Ver</a>
+            <form method="post" action="{% url 'inventario:eliminar_carga' carga.pk %}" onsubmit="return confirm('¿Eliminar esta carga?');">
+              {% csrf_token %}
+              <button class="boton boton-peligro" type="submit">Eliminar</button>
+            </form>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

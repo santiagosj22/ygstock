@@ -1,0 +1,14 @@
+{% load inventario_extras %}
+<label class="check">
+  <input
+    class="marcar"
+    type="checkbox"
+    data-codigo="{{ item.codigo }}"
+    data-nombre="{{ item.nombre }}"
+    data-color="{{ item.color }}"
+    data-almacenamiento="{{ item.almacenamiento }}"
+    data-sim="{{ item.tipo_sim }}"
+    data-precio="{{ item.difusion|peso }}"
+    aria-label="Seleccionar {{ item.nombre }}"
+  >
+</label>

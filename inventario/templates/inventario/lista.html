@@ -1,0 +1,314 @@
+{% extends "inventario/base.html" %}
+{% load inventario_extras l10n static %}
+
+{% block titulo %}Inventario{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'inventario/select2.min.css' %}">
+{% endblock %}
+
+{% block contenido %}
+  {% if not carga %}
+    <section class="vacio">
+      <p class="kicker">YG Stock</p>
+      <h1>Aún no hay inventario</h1>
+      <p>Sube el Excel tal como se descarga. Se guardan solo celulares de Monterrey, Almacenamiento y Centro.</p>
+      <a class="boton" href="{% url 'inventario:cargar' %}">Cargar el primer informe</a>
+    </section>
+  {% else %}
+    <header class="encabezado">
+      <div>
+        <p class="kicker">Corte {{ carga.fecha_corte|date:"d/m/Y H:i" }}</p>
+        <h1>Inventario</h1>
+      </div>
+    </header>
+
+    <section class="stats">
+      <a class="stat {% if not filtros.variacion %}stat-activo{% endif %}" href="{% url 'inventario:lista' %}?carga={{ carga.pk }}">
+        <span>Productos</span>
+        <strong>{{ carga.productos }}</strong>
+      </a>
+      <a class="stat stat-subio {% if filtros.variacion == 'subio' %}stat-activo{% endif %}" href="{% url 'inventario:lista' %}?carga={{ carga.pk }}&variacion=subio">
+        <span>Subieron</span>
+        <strong>{{ carga.subieron }}</strong>
+      </a>
+      <a class="stat stat-bajo {% if filtros.variacion == 'bajo' %}stat-activo{% endif %}" href="{% url 'inventario:lista' %}?carga={{ carga.pk }}&variacion=bajo">
+        <span>Bajaron</span>
+        <strong>{{ carga.bajaron }}</strong>
+      </a>
+      <a class="stat {% if filtros.variacion == 'igual' %}stat-activo{% endif %}" href="{% url 'inventario:lista' %}?carga={{ carga.pk }}&variacion=igual">
+        <span>Igual</span>
+        <strong>{{ carga.iguales }}</strong>
+      </a>
+      <a class="stat {% if filtros.variacion == 'sin_historial' %}stat-activo{% endif %}" href="{% url 'inventario:lista' %}?carga={{ carga.pk }}&variacion=sin_historial">
+        <span>Primera vez</span>
+        <strong>{{ carga.sin_historial }}</strong>
+      </a>
+    </section>
+
+    <div class="acciones-lista">
+      <button class="boton boton-secundario boton-filtros" id="abrir-filtros" type="button">Filtros</button>
+      <button class="boton boton-secundario" id="abrir-margenes" type="button">Aplicar %</button>
+      <a class="boton boton-secundario" href="{% url 'inventario:descargar' %}?{{ consulta }}">Descargar Excel</a>
+    </div>
+
+    <div class="filtro-fondo" id="filtro-fondo"></div>
+    <form class="panel-lateral" id="margenes" method="post" action="{% url 'inventario:margenes' %}">
+      {% csrf_token %}
+      <input type="hidden" name="siguiente" value="{{ request.get_full_path }}">
+      <div class="panel-tope">
+        <strong>Aplicar %</strong>
+        <button class="boton boton-secundario" id="cerrar-margenes" type="button">Cerrar</button>
+      </div>
+      <p class="resumen">Mínimo y máximo se calculan sobre difusión, el costo más 1%.</p>
+      <label class="campo">Mínimo
+        <input name="minimo" type="number" min="0" max="100" step="0.01" value="{{ margen.porcentaje_minimo|unlocalize }}" inputmode="decimal" required>
+      </label>
+      <label class="campo">Máximo
+        <input name="maximo" type="number" min="0" max="100" step="0.01" value="{{ margen.porcentaje_maximo|unlocalize }}" inputmode="decimal" required>
+      </label>
+      <button class="boton" type="submit">Aplicar</button>
+    </form>
+    <form class="filtros" id="filtros" method="get">
+      <div class="filtros-tope solo-en-movil">
+        <strong>Filtros</strong>
+        <button class="boton boton-secundario" id="cerrar-filtros" type="button">Cerrar</button>
+      </div>
+      <label class="campo campo-buscar">
+        Buscar
+        <input type="search" name="q" value="{{ filtros.q }}" placeholder="Código, nombre o color">
+      </label>
+      <label class="campo">
+        Corte
+        <select name="carga">
+          {% for opcion in cargas %}
+            <option value="{{ opcion.pk }}" {% if opcion.pk == carga.pk %}selected{% endif %}>
+              {{ opcion.fecha_corte|date:"d/m/Y H:i" }}
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="campo">
+        Bodega
+        <select name="bodega">
+          <option value="">Todas</option>
+          {% for opcion in opciones.bodegas %}
+            <option value="{{ opcion.valor }}" {% if filtros.bodega == opcion.valor %}selected{% endif %}>{{ opcion.etiqueta }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% include "inventario/_select.html" with nombre="clase" etiqueta="Clase" valor=filtros.clase opciones=opciones.clases %}
+      {% include "inventario/_select.html" with nombre="color" etiqueta="Color" valor=filtros.color opciones=opciones.colores %}
+      {% include "inventario/_select.html" with nombre="red" etiqueta="Red" valor=filtros.red opciones=opciones.redes %}
+      {% include "inventario/_select.html" with nombre="tipo_sim" etiqueta="SIM" valor=filtros.tipo_sim opciones=opciones.sims %}
+      <label class="campo">
+        Precio
+        <select name="variacion">
+          <option value="">Todos</option>
+          {% for valor, etiqueta in variaciones %}
+            <option value="{{ valor }}" {% if filtros.variacion == valor %}selected{% endif %}>{{ etiqueta }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="filtros-acciones">
+        <button class="boton" type="submit">Filtrar</button>
+        {% if hay_filtros %}
+          <a class="boton boton-secundario" href="{% url 'inventario:lista' %}?carga={{ carga.pk }}">Limpiar</a>
+        {% endif %}
+      </div>
+    </form>
+
+    {% if pagina.paginator.count %}
+      <p class="conteo">{{ pagina.paginator.count }} referencia{{ pagina.paginator.count|pluralize }}</p>
+
+      <div class="tabla-wrap solo-escritorio">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th class="col-check"><input id="marcar-todo" type="checkbox" aria-label="Seleccionar esta página"></th>
+              <th>Producto</th>
+              <th>Características</th>
+              <th>Bodegas</th>
+              <th>Variación</th>
+              <th>Precios</th>
+              <th>Existencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in pagina %}
+              <tr>
+                <td>{% include "inventario/_check.html" %}</td>
+                <td>
+                  <a class="nombre" href="{% url 'inventario:historial' item.codigo %}?carga={{ carga.pk }}" title="{{ item.descripcion }}">{{ item.nombre }}</a>
+                  <p class="codigo">{{ item.codigo }}</p>
+                </td>
+                <td>{% include "inventario/_ficha.html" %}</td>
+                <td>{% include "inventario/_sedes.html" %}</td>
+                <td>{% include "inventario/_variacion.html" %}</td>
+                <td>{% include "inventario/_precios.html" %}</td>
+                <td>{% include "inventario/_existencia.html" %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tarjetas solo-movil">
+        {% for item in pagina %}
+          <article class="tarjeta">
+            <div class="tarjeta-tope">
+              {% include "inventario/_check.html" %}
+              <div class="tarjeta-titulo">
+                <a class="nombre" href="{% url 'inventario:historial' item.codigo %}?carga={{ carga.pk }}">{{ item.nombre }}</a>
+                <p class="codigo">{{ item.codigo }}</p>
+              </div>
+              {% include "inventario/_existencia.html" %}
+            </div>
+            {% include "inventario/_ficha.html" %}
+            {% include "inventario/_sedes.html" %}
+            {% include "inventario/_variacion.html" %}
+            {% include "inventario/_precios.html" %}
+          </article>
+        {% endfor %}
+      </div>
+
+      {% if pagina.paginator.num_pages > 1 %}
+        <nav class="paginacion" aria-label="Páginas">
+          {% if pagina.has_previous %}
+            <a class="boton boton-secundario" href="?{% if consulta %}{{ consulta }}&{% endif %}page={{ pagina.previous_page_number }}">Anterior</a>
+          {% endif %}
+          <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+          {% if pagina.has_next %}
+            <a class="boton boton-secundario" href="?{% if consulta %}{{ consulta }}&{% endif %}page={{ pagina.next_page_number }}">Siguiente</a>
+          {% endif %}
+        </nav>
+      {% endif %}
+
+      <div class="barra-difusion" id="barra-difusion">
+        <span id="conteo-difusion">0 seleccionados</span>
+        <button class="boton" id="abrir-mensaje" type="button">Mensaje</button>
+      </div>
+      <aside class="panel-lateral" id="mensaje">
+        <div class="panel-tope">
+          <strong>Mensaje</strong>
+          <button class="boton boton-secundario" id="cerrar-mensaje" type="button">Cerrar</button>
+        </div>
+        <textarea class="texto-mensaje" id="texto-mensaje" rows="14" aria-label="Mensaje de difusión"></textarea>
+        <a class="boton boton-whatsapp" id="enviar-whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+      </aside>
+    {% else %}
+      <section class="vacio vacio-compacto">
+        <h2>Ningún producto coincide</h2>
+        <p>Prueba con otro filtro o limpia la búsqueda.</p>
+        <a class="boton boton-secundario" href="{% url 'inventario:lista' %}?carga={{ carga.pk }}">Limpiar filtros</a>
+      </section>
+    {% endif %}
+
+    <script src="{% static 'inventario/jquery.min.js' %}"></script>
+    <script src="{% static 'inventario/select2.min.js' %}"></script>
+    <script>
+      const fondo = document.getElementById("filtro-fondo");
+      const panelFiltros = document.getElementById("filtros");
+      const panelMargenes = document.getElementById("margenes");
+      const panelMensaje = document.getElementById("mensaje");
+      const textoMensaje = document.getElementById("texto-mensaje");
+      const enviarWhatsapp = document.getElementById("enviar-whatsapp");
+      function cerrarPaneles() {
+        [panelFiltros, panelMargenes, panelMensaje].forEach(function (panel) {
+          if (panel) panel.classList.remove("abierto");
+        });
+        fondo.classList.remove("visible");
+      }
+      function abrirPanel(panel) {
+        cerrarPaneles();
+        panel.classList.add("abierto");
+        fondo.classList.add("visible");
+      }
+      document.getElementById("abrir-filtros").addEventListener("click", function () {
+        abrirPanel(panelFiltros);
+        iniciarSelect();
+      });
+      document.getElementById("cerrar-filtros").addEventListener("click", cerrarPaneles);
+      document.getElementById("abrir-margenes").addEventListener("click", function () {
+        abrirPanel(panelMargenes);
+      });
+      document.getElementById("cerrar-margenes").addEventListener("click", cerrarPaneles);
+      fondo.addEventListener("click", cerrarPaneles);
+      function iniciarSelect() {
+        if (!window.jQuery || jQuery("#filtros select").first().hasClass("select2-hidden-accessible")) {
+          return;
+        }
+        jQuery("#filtros select").select2({
+          width: "100%",
+          dropdownParent: jQuery("#filtros"),
+          language: { noResults: function () { return "Sin resultados"; } }
+        });
+      }
+      if (window.matchMedia("(min-width: 861px)").matches) {
+        iniciarSelect();
+      }
+
+      function lineaDe(el) {
+        const detalle = [el.dataset.color, el.dataset.almacenamiento, el.dataset.sim].filter(Boolean).join(" · ");
+        return [el.dataset.nombre, detalle, el.dataset.precio].filter(Boolean).join("\n");
+      }
+      function seleccionados() {
+        const unicos = new Map();
+        document.querySelectorAll(".marcar:checked").forEach(function (el) {
+          unicos.set(el.dataset.codigo, el);
+        });
+        return unicos;
+      }
+      function publicarWhatsapp(texto) {
+        if (!enviarWhatsapp) return;
+        if (texto.trim()) {
+          enviarWhatsapp.href = "https://wa.me/?text=" + encodeURIComponent(texto);
+        } else {
+          enviarWhatsapp.removeAttribute("href");
+        }
+      }
+      function actualizarDifusion() {
+        const unicos = seleccionados();
+        const barra = document.getElementById("barra-difusion");
+        const conteo = document.getElementById("conteo-difusion");
+        if (!barra) return;
+        barra.classList.toggle("visible", unicos.size > 0);
+        conteo.textContent = unicos.size === 1 ? "1 seleccionado" : unicos.size + " seleccionados";
+        const texto = [...unicos.values()].map(lineaDe).join("\n\n");
+        if (textoMensaje) textoMensaje.value = texto;
+        publicarWhatsapp(texto);
+        const todo = document.getElementById("marcar-todo");
+        const marcas = document.querySelectorAll(".marcar");
+        if (todo && marcas.length) {
+          todo.checked = unicos.size > 0 && unicos.size === new Set([...marcas].map(function (el) { return el.dataset.codigo; })).size;
+        }
+      }
+      document.querySelectorAll(".marcar").forEach(function (input) {
+        input.addEventListener("change", function () {
+          document.querySelectorAll(".marcar").forEach(function (otro) {
+            if (otro.dataset.codigo === input.dataset.codigo) otro.checked = input.checked;
+          });
+          actualizarDifusion();
+        });
+      });
+      const marcarTodo = document.getElementById("marcar-todo");
+      if (marcarTodo) {
+        marcarTodo.addEventListener("change", function () {
+          document.querySelectorAll(".marcar").forEach(function (el) { el.checked = marcarTodo.checked; });
+          actualizarDifusion();
+        });
+      }
+      const abrirMensaje = document.getElementById("abrir-mensaje");
+      if (abrirMensaje && panelMensaje) {
+        abrirMensaje.addEventListener("click", function () {
+          actualizarDifusion();
+          abrirPanel(panelMensaje);
+        });
+        document.getElementById("cerrar-mensaje").addEventListener("click", cerrarPaneles);
+      }
+      if (textoMensaje) {
+        textoMensaje.addEventListener("input", function () { publicarWhatsapp(textoMensaje.value); });
+      }
+    </script>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,8 @@
+{% load inventario_extras %}
+<div class="sedes">
+  {% for sede in item.bodegas %}
+    <span class="sede" title="Costo {{ sede.costo|peso }}">{{ sede.etiqueta }} · {{ sede.existencia|cantidad }}</span>
+  {% empty %}
+    <span class="sede">Sin bodega</span>
+  {% endfor %}
+</div>

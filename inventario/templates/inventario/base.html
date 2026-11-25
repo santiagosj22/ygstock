@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block titulo %}Inventario{% endblock %} · YG Stock</title>
+  <link rel="stylesheet" href="{% static 'inventario/app.css' %}?v=6">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <header class="barra">
+    <a class="marca" href="{% url 'inventario:lista' %}">
+      <span class="marca-yg">YG</span>
+      <span class="marca-texto">Stock <small>Inventario</small></span>
+    </a>
+    <nav>
+      <a class="{% if request.resolver_match.url_name == 'lista' or request.resolver_match.url_name == 'historial' %}activo{% endif %}" href="{% url 'inventario:lista' %}">Inventario</a>
+      <a class="{% if request.resolver_match.url_name == 'cargas' or request.resolver_match.url_name == 'cargar' %}activo{% endif %}" href="{% url 'inventario:cargas' %}">Cargas</a>
+    </nav>
+  </header>
+
+  {% if messages %}
+    <div class="avisos">
+      {% for message in messages %}
+        <p class="aviso aviso-{{ message.tags }}">{{ message }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <main class="pagina">
+    {% block contenido %}{% endblock %}
+  </main>
+  <nav class="menu-movil" aria-label="Secciones">
+    <a class="{% if request.resolver_match.url_name == 'lista' or request.resolver_match.url_name == 'historial' %}activo{% endif %}" href="{% url 'inventario:lista' %}">Inventario</a>
+    <a class="{% if request.resolver_match.url_name == 'cargas' or request.resolver_match.url_name == 'cargar' %}activo{% endif %}" href="{% url 'inventario:cargas' %}">Cargas</a>
+  </nav>
+</body>
+</html>

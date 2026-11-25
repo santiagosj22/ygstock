@@ -1,0 +1,37 @@
+{% extends "inventario/base.html" %}
+
+{% block titulo %}Cargar Excel{% endblock %}
+
+{% block contenido %}
+  <header class="encabezado">
+    <div>
+      <p class="kicker">Acumulativo</p>
+      <h1>Cargar informe</h1>
+      <p class="resumen">Sube el archivo tal como se descarga. Solo entran celulares de Monterrey, Almacenamiento y Centro.</p>
+    </div>
+  </header>
+
+  <section class="panel">
+    <form method="post" enctype="multipart/form-data" id="form-carga">
+      {% csrf_token %}
+      <label class="campo campo-archivo" for="archivo">
+        Archivo .xlsx
+        <input id="archivo" name="archivo" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+      </label>
+      <button class="boton" id="boton-cargar" type="submit">Cargar inventario</button>
+    </form>
+    <ul class="notas">
+      <li>La descripción se separa en clase, color, red, tipo de SIM, RAM y almacenamiento.</li>
+      <li>Exhibición sale de EXH. También se reconocen nuevo, usado, outlet y open box.</li>
+      <li>Cada carga se conserva. Si el mismo código está en varias sedes, el costo de comparación es el promedio.</li>
+    </ul>
+  </section>
+
+  <script>
+    document.getElementById("form-carga").addEventListener("submit", function () {
+      const boton = document.getElementById("boton-cargar");
+      boton.disabled = true;
+      boton.textContent = "Cargando…";
+    });
+  </script>
+{% endblock %}
