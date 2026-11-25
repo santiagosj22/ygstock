@@ -78,6 +78,7 @@ nav a {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
+  gap: 0.4rem;
   padding: 0 0.85rem;
   border-radius: 999px;
   text-decoration: none;
@@ -194,6 +195,7 @@ nav a.activo:not(.boton) { background: #efeae2; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
   padding: 0.55rem 1rem;
   border: 0;
   border-radius: 999px;
@@ -522,7 +524,35 @@ nav a.activo:not(.boton) { background: #efeae2; }
 
 .vacio-compacto { margin-top: 1rem; }
 
-.campo-archivo input { padding: 0.7rem 0; border: 0; background: transparent; }
+.boton-icono {
+  width: 44px;
+  padding: 0;
+}
+
+.fila-carga {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.fila-carga .boton span {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archivo-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
 
 .notas { margin: 1rem 0 0; padding-left: 1.1rem; color: var(--suave); }
 .notas li + li { margin-top: 0.35rem; }
@@ -681,8 +711,19 @@ nav a.activo:not(.boton) { background: #efeae2; }
   }
   .menu-movil a {
     flex: 1;
+    flex-direction: column;
     justify-content: center;
+    gap: 0.15rem;
     min-height: 52px;
+    font-size: 0.72rem;
+  }
+  .precios {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem 0.8rem;
+  }
+  .precios div {
+    justify-content: start;
+    gap: 0.35rem;
   }
   .campo-buscar { grid-column: auto; }
   .pagina { width: min(1320px, calc(100% - 1.2rem)); padding-bottom: 5.5rem; }
