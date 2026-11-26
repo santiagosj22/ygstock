@@ -260,11 +260,38 @@ nav a.activo:not(.boton) { background: #efeae2; }
 .nombre:hover { text-decoration: underline; }
 
 .codigo {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
   margin: 0.15rem 0 0;
   color: var(--suave);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
 }
+
+.copiar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--suave);
+  cursor: pointer;
+}
+
+.copiar:hover { background: #f3efe7; color: var(--tinta); }
+
+.copiar .icono-listo { display: none; }
+
+.copiar.copiado { color: #15803d; }
+
+.copiar.copiado .icono-copiar { display: none; }
+
+.copiar.copiado .icono-listo { display: block; }
 
 .fichas { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 

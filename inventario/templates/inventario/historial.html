@@ -11,7 +11,7 @@
     <div>
       {% if producto.familia %}<p class="kicker">{{ producto.familia }}</p>{% endif %}
       <h1>{{ producto.nombre }}</h1>
-      <p class="codigo">{{ codigo }}</p>
+      {% include "inventario/_codigo.html" %}
       {% include "inventario/_ficha.html" with item=producto %}
     </div>
   </header>

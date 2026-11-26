@@ -316,6 +316,10 @@ class CargaTests(TestCase):
         self.assertContains(respuesta, 'class="marcar"')
         self.assertContains(respuesta, "WhatsApp")
         self.assertContains(respuesta, "menu-movil")
+        self.assertContains(respuesta, 'data-copiar="0001"')
+        self.assertContains(respuesta, "Copiar código")
+        self.assertContains(respuesta, 'name="ram"')
+        self.assertContains(respuesta, "Memoria")
 
         historial = self.client.get("/producto/0001/")
         self.assertEqual(historial.status_code, 200)
@@ -337,6 +341,8 @@ class CargaTests(TestCase):
         self.assertContains(respuesta, "Monterrey")
         self.assertContains(respuesta, "Almacenamiento")
         self.assertContains(respuesta, "Costo promedio")
+        self.assertContains(respuesta, "Monterrey C1 P")
+        self.assertContains(respuesta, "Almacenamiento C3 P")
         self.assertContains(respuesta, 'class="existencia">4<')
 
     def test_el_excel_descarga_lo_filtrado(self):

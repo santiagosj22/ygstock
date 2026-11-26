@@ -99,7 +99,8 @@ def descargar(request):
                 fila.ram,
                 fila.almacenamiento,
                 ", ".join(
-                    f"{sede['etiqueta']} ({_entero(sede['existencia'])})" for sede in fila.bodegas
+                    f"{sede['etiqueta']} C{_entero(sede['existencia'])} P {sede['costo']}"
+                    for sede in fila.bodegas
                 ),
                 float(fila.existencia),
                 float(fila.costo),
@@ -268,6 +269,8 @@ def _filtros(request):
         "color": request.GET.get("color") or "",
         "red": request.GET.get("red") or "",
         "tipo_sim": request.GET.get("tipo_sim") or "",
+        "ram": request.GET.get("ram") or "",
+        "almacenamiento": request.GET.get("almacenamiento") or "",
         "variacion": request.GET.get("variacion") or "",
     }
 
@@ -281,11 +284,26 @@ def _opciones(carga):
         "colores": _valores(base, "color"),
         "redes": _valores(base, "red"),
         "sims": _valores(base, "tipo_sim"),
+        "rams": _medidas(_valores(base, "ram")),
+        "memorias": _medidas(_valores(base, "almacenamiento")),
     }
 
 
 def _valores(items, campo):
     return list(items.exclude(**{campo: ""}).values_list(campo, flat=True).distinct().order_by(campo))
+
+
+def _medidas(valores):
+    def clave(texto):
+        partes = str(texto).split()
+        try:
+            numero = int(partes[0])
+        except (IndexError, ValueError):
+            numero = 0
+        factor = 1024 if len(partes) > 1 and partes[1] == "TB" else 1
+        return numero * factor
+
+    return sorted(valores, key=clave)
 
 
 def _destino(valor):

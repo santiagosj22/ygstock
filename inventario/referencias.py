@@ -84,7 +84,7 @@ def listar_referencias(carga, filtros, margen):
             for codigo in codigos
             if any(fila.bodega == filtros["bodega"] for fila in por_codigo[codigo])
         }
-    for campo in ("clase", "color", "red", "tipo_sim"):
+    for campo in ("clase", "color", "red", "tipo_sim", "ram", "almacenamiento"):
         valor = filtros.get(campo) or ""
         if valor:
             codigos = {

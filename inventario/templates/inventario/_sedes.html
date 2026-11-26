@@ -1,7 +1,7 @@
 {% load inventario_extras %}
 <div class="sedes">
   {% for sede in item.bodegas %}
-    <span class="sede" title="Costo {{ sede.costo|peso }}">{{ sede.etiqueta }} · {{ sede.existencia|cantidad }}</span>
+    <span class="sede">{{ sede.etiqueta }} C{{ sede.existencia|cantidad }} P {{ sede.costo|peso }}</span>
   {% empty %}
     <span class="sede">Sin bodega</span>
   {% endfor %}

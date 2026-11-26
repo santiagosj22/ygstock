@@ -105,6 +105,8 @@
       {% include "inventario/_select.html" with nombre="color" etiqueta="Color" valor=filtros.color opciones=opciones.colores %}
       {% include "inventario/_select.html" with nombre="red" etiqueta="Red" valor=filtros.red opciones=opciones.redes %}
       {% include "inventario/_select.html" with nombre="tipo_sim" etiqueta="SIM" valor=filtros.tipo_sim opciones=opciones.sims %}
+      {% include "inventario/_select.html" with nombre="ram" etiqueta="RAM" valor=filtros.ram opciones=opciones.rams %}
+      {% include "inventario/_select.html" with nombre="almacenamiento" etiqueta="Memoria" valor=filtros.almacenamiento opciones=opciones.memorias %}
       <label class="campo">
         Precio
         <select name="variacion">
@@ -144,7 +146,7 @@
                 <td>{% include "inventario/_check.html" %}</td>
                 <td>
                   <a class="nombre" href="{% url 'inventario:historial' item.codigo %}?carga={{ carga.pk }}" title="{{ item.descripcion }}">{{ item.nombre }}</a>
-                  <p class="codigo">{{ item.codigo }}</p>
+                  {% include "inventario/_codigo.html" with codigo=item.codigo %}
                 </td>
                 <td>{% include "inventario/_ficha.html" %}</td>
                 <td>{% include "inventario/_sedes.html" %}</td>
@@ -164,7 +166,7 @@
               {% include "inventario/_check.html" %}
               <div class="tarjeta-titulo">
                 <a class="nombre" href="{% url 'inventario:historial' item.codigo %}?carga={{ carga.pk }}">{{ item.nombre }}</a>
-                <p class="codigo">{{ item.codigo }}</p>
+                {% include "inventario/_codigo.html" with codigo=item.codigo %}
               </div>
               {% include "inventario/_existencia.html" %}
             </div>

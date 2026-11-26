@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>{% block titulo %}Inventario{% endblock %} · YG Stock</title>
-  <link rel="stylesheet" href="{% static 'inventario/app.css' %}?v=13">
+  <link rel="stylesheet" href="{% static 'inventario/app.css' %}?v=14">
   {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -48,5 +48,40 @@
       Cargas
     </a>
   </nav>
+  <script>
+    document.addEventListener("click", function (evento) {
+      const boton = evento.target.closest ? evento.target.closest(".copiar") : null;
+      if (!boton) return;
+      const codigo = boton.dataset.copiar || "";
+      function marcar() {
+        boton.classList.add("copiado");
+        boton.setAttribute("aria-label", "Código copiado");
+        window.setTimeout(function () {
+          boton.classList.remove("copiado");
+          boton.setAttribute("aria-label", "Copiar código");
+        }, 1200);
+      }
+      function copiarConArea() {
+        const area = document.createElement("textarea");
+        area.value = codigo;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.left = "-9999px";
+        document.body.appendChild(area);
+        area.select();
+        const ok = document.execCommand("copy");
+        area.remove();
+        return ok;
+      }
+      const porArea = copiarConArea();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(codigo).then(marcar).catch(function () {
+          if (porArea) marcar();
+        });
+        return;
+      }
+      if (porArea) marcar();
+    });
+  </script>
 </body>
 </html>
