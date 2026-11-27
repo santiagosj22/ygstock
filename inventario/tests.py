@@ -377,6 +377,24 @@ class CargaTests(TestCase):
         self.assertEqual(filas[1][16], "Sí")
         self.assertEqual(len(filas), 2)
 
+    def test_un_filtro_acepta_varias_opciones(self):
+        importar_excel(
+            _excel(
+                [
+                    ("0001", "Negro", "CELULAR APPLE IPHONE 15 5G 6+128GB S-FIS NEGRO EXH", "CELULARES", "4-MONTERREY", 320, 1),
+                    ("0002", "Azul", "CELULAR APPLE IPHONE 13 5G 4+128GB E-SIM AZUL NUEVO", "CELULARES", "4-MONTERREY", 100, 1),
+                    ("0003", "Verde", "CELULAR APPLE IPHONE 12 5G 4+128GB S-FIS VERDE USADO", "CELULARES", "2-TIENDA CENTRO", 80, 1),
+                ],
+                "2026-11-24 7:38 pm",
+                "informe.xlsx",
+            )
+        )
+        respuesta = self.client.get("/?clase=Exhibición&clase=Nuevo")
+        self.assertContains(respuesta, "0001")
+        self.assertContains(respuesta, "0002")
+        self.assertNotContains(respuesta, "0003")
+        self.assertContains(respuesta, "multiple")
+
     def test_los_margenes_se_pueden_cambiar(self):
         importar_excel(
             _excel(

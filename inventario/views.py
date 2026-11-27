@@ -325,16 +325,19 @@ def _filtros(request):
 
 
 def _filtros_de(params):
+    def varios(nombre):
+        return [valor for valor in params.getlist(nombre) if valor]
+
     return {
         "q": (params.get("q") or "").strip(),
-        "bodega": params.get("bodega") or "",
-        "clase": params.get("clase") or "",
-        "color": params.get("color") or "",
-        "red": params.get("red") or "",
-        "tipo_sim": params.get("tipo_sim") or "",
-        "ram": params.get("ram") or "",
-        "almacenamiento": params.get("almacenamiento") or "",
-        "variacion": params.get("variacion") or "",
+        "bodega": varios("bodega"),
+        "clase": varios("clase"),
+        "color": varios("color"),
+        "red": varios("red"),
+        "tipo_sim": varios("tipo_sim"),
+        "ram": varios("ram"),
+        "almacenamiento": varios("almacenamiento"),
+        "variacion": varios("variacion"),
     }
 
 

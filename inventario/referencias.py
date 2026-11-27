@@ -80,19 +80,20 @@ def listar_referencias(carga, filtros, margen):
             for codigo, filas in por_codigo.items()
             if codigo in codigos and _coincide(filas, consulta)
         }
-    if filtros.get("bodega"):
+    bodegas = _elegidos(filtros, "bodega")
+    if bodegas:
         codigos = {
             codigo
             for codigo in codigos
-            if any(fila.bodega == filtros["bodega"] for fila in por_codigo[codigo])
+            if any(fila.bodega in bodegas for fila in por_codigo[codigo])
         }
     for campo in ("clase", "color", "red", "tipo_sim", "ram", "almacenamiento"):
-        valor = filtros.get(campo) or ""
-        if valor:
+        elegidos = _elegidos(filtros, campo)
+        if elegidos:
             codigos = {
                 codigo
                 for codigo in codigos
-                if any(getattr(fila, campo) == valor for fila in por_codigo[codigo])
+                if any(getattr(fila, campo) in elegidos for fila in por_codigo[codigo])
             }
 
     ajustes = {
@@ -102,12 +103,12 @@ def listar_referencias(carga, filtros, margen):
     referencias = [
         Referencia(por_codigo[codigo], margen, ajustes.get(codigo)) for codigo in codigos
     ]
-    variacion = filtros.get("variacion") or ""
-    if variacion:
-        referencias = [fila for fila in referencias if fila.variacion == variacion]
-    if variacion == ItemInventario.Variacion.SUBIO:
+    variaciones = _elegidos(filtros, "variacion")
+    if variaciones:
+        referencias = [fila for fila in referencias if fila.variacion in variaciones]
+    if set(variaciones) == {ItemInventario.Variacion.SUBIO}:
         referencias.sort(key=lambda fila: fila.diferencia or Decimal("0"), reverse=True)
-    elif variacion == ItemInventario.Variacion.BAJO:
+    elif set(variaciones) == {ItemInventario.Variacion.BAJO}:
         referencias.sort(key=lambda fila: fila.diferencia or Decimal("0"))
     else:
         referencias.sort(key=lambda fila: (fila.nombre, fila.codigo))
@@ -136,6 +137,13 @@ def precios_de(costo, margen_operativo, porcentaje_minimo, porcentaje_maximo):
         "renta": (base - costo).quantize(Decimal("0.01")),
         "difusion": (base * FACTOR_DIFUSION).quantize(Decimal("0.01")),
     }
+
+
+def _elegidos(filtros, campo):
+    valor = filtros.get(campo) or []
+    if isinstance(valor, str):
+        return [valor] if valor else []
+    return [item for item in valor if item]
 
 
 def _primero(items, campo):

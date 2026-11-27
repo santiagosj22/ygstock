@@ -1,9 +1,8 @@
 <div class="campo">
   {{ etiqueta }}
-  <select name="{{ nombre }}">
-    <option value="">Todos</option>
+  <select name="{{ nombre }}" multiple data-placeholder="Todos">
     {% for opcion in opciones %}
-      <option value="{{ opcion }}" {% if valor == opcion %}selected{% endif %}>{{ opcion }}</option>
+      <option value="{{ opcion }}" {% if opcion in valor %}selected{% endif %}>{{ opcion }}</option>
     {% endfor %}
   </select>
 </div>

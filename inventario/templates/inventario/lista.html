@@ -111,10 +111,9 @@
       </div>
       <div class="campo">
         Bodega
-        <select name="bodega">
-          <option value="">Todas</option>
+        <select name="bodega" multiple data-placeholder="Todas">
           {% for opcion in opciones.bodegas %}
-            <option value="{{ opcion.valor }}" {% if filtros.bodega == opcion.valor %}selected{% endif %}>{{ opcion.etiqueta }}</option>
+            <option value="{{ opcion.valor }}" {% if opcion.valor in filtros.bodega %}selected{% endif %}>{{ opcion.etiqueta }}</option>
           {% endfor %}
         </select>
       </div>
@@ -126,10 +125,9 @@
       {% include "inventario/_select.html" with nombre="almacenamiento" etiqueta="Memoria" valor=filtros.almacenamiento opciones=opciones.memorias %}
       <div class="campo">
         Precio
-        <select name="variacion">
-          <option value="">Todos</option>
+        <select name="variacion" multiple data-placeholder="Todos">
           {% for valor, etiqueta in variaciones %}
-            <option value="{{ valor }}" {% if filtros.variacion == valor %}selected{% endif %}>{{ etiqueta }}</option>
+            <option value="{{ valor }}" {% if valor in filtros.variacion %}selected{% endif %}>{{ etiqueta }}</option>
           {% endfor %}
         </select>
       </div>
@@ -286,9 +284,17 @@
         if (!window.jQuery || jQuery("#filtros select").first().hasClass("select2-hidden-accessible")) {
           return;
         }
-        jQuery("#filtros select").on("mousedown", function (event) {
+        const selects = jQuery("#filtros select");
+        selects.on("mousedown", function (event) {
           event.preventDefault();
-        }).select2({
+        });
+        selects.filter("[multiple]").select2({
+          width: "100%",
+          dropdownParent: jQuery("#filtros"),
+          closeOnSelect: false,
+          language: { noResults: function () { return "Sin resultados"; } }
+        });
+        selects.not("[multiple]").select2({
           width: "100%",
           dropdownParent: jQuery("#filtros"),
           language: { noResults: function () { return "Sin resultados"; } }
