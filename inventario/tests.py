@@ -8,7 +8,7 @@ from django.utils import timezone
 from openpyxl import Workbook, load_workbook
 
 from inventario.carga import depurar_cargas, importar_excel
-from inventario.models import ItemInventario
+from inventario.models import ItemInventario, PrecioReferencia
 from inventario.parser import parse_descripcion
 from inventario.templatetags.inventario_extras import peso, punto_color
 
@@ -317,6 +317,11 @@ class CargaTests(TestCase):
         self.assertContains(respuesta, "WhatsApp")
         self.assertContains(respuesta, "menu-movil")
         self.assertContains(respuesta, 'data-copiar="0001"')
+        self.assertContains(respuesta, 'data-ram="6 GB"')
+        self.assertContains(respuesta, 'data-clase="Exhibición"')
+        self.assertContains(respuesta, "inventario/mensaje.js")
+        self.assertContains(respuesta, "Agrupar por referencia")
+        self.assertContains(respuesta, "Agrupar por clase")
         self.assertContains(respuesta, "Copiar código")
         self.assertContains(respuesta, 'name="ram"')
         self.assertContains(respuesta, "Memoria")
@@ -366,7 +371,7 @@ class CargaTests(TestCase):
         filas = list(libro.active.iter_rows(values_only=True))
         self.assertEqual(filas[1][0], "0001")
         self.assertEqual(filas[1][10], 325)
-        self.assertEqual(filas[1][11], 334.82)
+        self.assertEqual(filas[1][11], 338.13)
         self.assertEqual(filas[1][12], 6.5)
         self.assertEqual(filas[1][13], 2)
         self.assertEqual(filas[1][16], "Sí")
@@ -384,7 +389,7 @@ class CargaTests(TestCase):
         self.assertEqual(respuesta.status_code, 302)
         pagina = self.client.get("/")
         self.assertContains(pagina, 'class="precio-fijo">1100<')
-        self.assertContains(pagina, 'class="precio-fijo">1111<')
+        self.assertContains(pagina, 'class="precio-fijo">1122<')
         self.assertContains(pagina, 'class="precio-fijo">1200<')
 
     def test_editar_el_margen_recalcula_difusion_y_renta(self):
@@ -400,19 +405,42 @@ class CargaTests(TestCase):
         datos = respuesta.json()
         self.assertEqual(datos["texto"]["minimo"], "$ 1.020")
         self.assertEqual(datos["texto"]["maximo"], "$ 1.040")
-        self.assertEqual(datos["texto"]["difusion"], "$ 1.051")
+        self.assertEqual(datos["texto"]["difusion"], "$ 1.061")
         self.assertEqual(datos["texto"]["renta"], "$ 40")
         self.assertEqual(datos["texto"]["margen"], "4.00%")
         self.assertEqual(ItemInventario.objects.get(codigo="0001").costo, Decimal("1000000.00"))
 
-        difundido = self.client.post("/precios/", {"codigo": "0001", "campo": "difusion", "valor": "1051"})
+        difundido = self.client.post("/precios/", {"codigo": "0001", "campo": "difusion", "valor": "1061"})
         self.assertEqual(difundido.status_code, 200)
-        self.assertEqual(difundido.json()["texto"]["margen"], "4.06%")
+        self.assertEqual(difundido.json()["texto"]["margen"], "4.02%")
         self.assertEqual(ItemInventario.objects.get(codigo="0001").costo, Decimal("1000000.00"))
 
         pagina = self.client.get("/")
         self.assertContains(pagina, "Editar precios")
         self.assertContains(pagina, 'data-campo="renta"')
+
+    def test_el_margen_masivo_solo_toca_la_vista_filtrada(self):
+        importar_excel(
+            _excel(
+                [
+                    ("0001", "iPhone", "CELULAR APPLE IPHONE 15 5G 6+128GB E-SIM AZUL EXH", "CELULARES", "4-MONTERREY", 1000000, 1),
+                    ("0002", "Otro", "CELULAR APPLE IPHONE 13 5G 4+128GB E-SIM AZUL NUEVO", "CELULARES", "4-MONTERREY", 1000000, 1),
+                ],
+                "2026-11-24 7:38 pm",
+                "informe.xlsx",
+            )
+        )
+        respuesta = self.client.post(
+            "/margen-vista/",
+            {"margen": "8", "siguiente": "/?clase=Exhibición"},
+        )
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(PrecioReferencia.objects.get(codigo="0001").margen, Decimal("8.00"))
+        self.assertFalse(PrecioReferencia.objects.filter(codigo="0002").exists())
+        pagina = self.client.get("/?clase=Exhibición")
+        self.assertContains(pagina, "Aplicar a la vista")
+        self.assertContains(pagina, 'class="precio-fijo">1102<')
+        self.assertContains(pagina, 'class="precio-fijo">1020<')
 
     def test_depura_familias_y_bodegas_que_no_entran(self):
         carga = importar_excel(

@@ -1,17 +1,19 @@
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from itertools import groupby
+from urllib.parse import urlsplit
 
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.http import Http404, HttpResponse, JsonResponse
+from django.db import transaction
+from django.http import Http404, HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 
 from inventario.carga import ErrorCarga, carga_siguiente, importar_excel, recalcular_variacion
 from inventario.models import CargaInventario, ItemInventario, PrecioReferencia, margen_actual
-from inventario.referencias import listar_referencias, precios_de, promedio
+from inventario.referencias import FACTOR_DIFUSION, listar_referencias, precios_de, promedio
 from inventario.templatetags.inventario_extras import en_miles, peso
 from inventario.seleccion import etiqueta_bodega, orden_bodega
 
@@ -47,6 +49,7 @@ def lista(request):
             "opciones": opciones,
             "consulta": parametros.urlencode(),
             "hay_filtros": any(filtros.values()),
+            "filtrados": len(referencias),
             "variaciones": ItemInventario.Variacion.choices,
             "margen": margen,
         },
@@ -180,6 +183,50 @@ def guardar_margenes(request):
 
 
 @require_POST
+def aplicar_margen_vista(request):
+    destino = _destino(request.POST.get("siguiente"))
+    try:
+        margen = Decimal((request.POST.get("margen") or "").replace(",", ".").replace("%", ""))
+    except InvalidOperation:
+        messages.error(request, "El margen tiene que ser un número.")
+        return redirect(destino)
+    margen = margen.quantize(Decimal("0.01"))
+    if margen < 0 or margen > 1000:
+        messages.error(request, "El margen tiene que estar entre 0 y 1000.")
+        return redirect(destino)
+
+    carga, filtros = _vista(destino)
+    if carga is None:
+        messages.error(request, "No hay inventario cargado.")
+        return redirect(destino)
+
+    codigos = [fila.codigo for fila in listar_referencias(carga, filtros, margen_actual())]
+    if not codigos:
+        messages.error(request, "La vista no tiene productos para aplicar el margen.")
+        return redirect(destino)
+
+    existentes = {
+        fila.codigo: fila for fila in PrecioReferencia.objects.filter(codigo__in=codigos)
+    }
+    crear = []
+    actualizar = []
+    for codigo in codigos:
+        fila = existentes.get(codigo)
+        if fila is None:
+            crear.append(PrecioReferencia(codigo=codigo, margen=margen))
+        else:
+            fila.margen = margen
+            actualizar.append(fila)
+    with transaction.atomic():
+        if crear:
+            PrecioReferencia.objects.bulk_create(crear)
+        if actualizar:
+            PrecioReferencia.objects.bulk_update(actualizar, ["margen"])
+    messages.success(request, f"Margen {margen}% aplicado a {len(codigos)} productos de la vista.")
+    return redirect(destino)
+
+
+@require_POST
 def guardar_precio(request):
     codigo = (request.POST.get("codigo") or "").strip()
     campo = request.POST.get("campo") or ""
@@ -212,7 +259,7 @@ def guardar_precio(request):
     if campo == "margen":
         operativo = valor
     elif campo == "difusion":
-        base = (valor * Decimal(1000) / Decimal("1.01")).quantize(Decimal("0.01"))
+        base = (valor * Decimal(1000) / FACTOR_DIFUSION).quantize(Decimal("0.01"))
         operativo = (base / costo - 1) * Decimal(100)
     else:
         operativo = valor * Decimal(1000) / costo * Decimal(100)
@@ -261,17 +308,33 @@ def listar_referencias_de(filas, margen):
     return Referencia(filas, margen, ajuste)
 
 
+def _vista(destino):
+    params = QueryDict(urlsplit(destino).query)
+    crudo = params.get("carga") or ""
+    if crudo.isdigit():
+        carga = CargaInventario.objects.filter(pk=int(crudo)).first()
+    elif crudo:
+        carga = None
+    else:
+        carga = CargaInventario.objects.first()
+    return carga, _filtros_de(params)
+
+
 def _filtros(request):
+    return _filtros_de(request.GET)
+
+
+def _filtros_de(params):
     return {
-        "q": (request.GET.get("q") or "").strip(),
-        "bodega": request.GET.get("bodega") or "",
-        "clase": request.GET.get("clase") or "",
-        "color": request.GET.get("color") or "",
-        "red": request.GET.get("red") or "",
-        "tipo_sim": request.GET.get("tipo_sim") or "",
-        "ram": request.GET.get("ram") or "",
-        "almacenamiento": request.GET.get("almacenamiento") or "",
-        "variacion": request.GET.get("variacion") or "",
+        "q": (params.get("q") or "").strip(),
+        "bodega": params.get("bodega") or "",
+        "clase": params.get("clase") or "",
+        "color": params.get("color") or "",
+        "red": params.get("red") or "",
+        "tipo_sim": params.get("tipo_sim") or "",
+        "ram": params.get("ram") or "",
+        "almacenamiento": params.get("almacenamiento") or "",
+        "variacion": params.get("variacion") or "",
     }
 
 

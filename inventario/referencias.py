@@ -5,6 +5,8 @@ from decimal import Decimal
 from inventario.models import ItemInventario, PrecioReferencia
 from inventario.seleccion import etiqueta_bodega, orden_bodega
 
+FACTOR_DIFUSION = Decimal("1.02")
+
 
 class Referencia:
     def __init__(self, items, margen, ajuste=None):
@@ -124,7 +126,7 @@ def aplicar_margen(costo, porcentaje):
 
 
 def precios_de(costo, margen_operativo, porcentaje_minimo, porcentaje_maximo):
-    """Mínimo y máximo son el rango. La renta sale del margen y la difusión es ese precio más 1%."""
+    """Mínimo y máximo son el rango. La renta sale del margen y la difusión es ese precio más 2%."""
 
     base = aplicar_margen(costo, margen_operativo)
     return {
@@ -132,7 +134,7 @@ def precios_de(costo, margen_operativo, porcentaje_minimo, porcentaje_maximo):
         "minimo": aplicar_margen(costo, porcentaje_minimo),
         "maximo": aplicar_margen(costo, porcentaje_maximo),
         "renta": (base - costo).quantize(Decimal("0.01")),
-        "difusion": (base * Decimal("1.01")).quantize(Decimal("0.01")),
+        "difusion": (base * FACTOR_DIFUSION).quantize(Decimal("0.01")),
     }
 
 

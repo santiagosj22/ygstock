@@ -1,4 +1,4 @@
-<label class="campo">
+<div class="campo">
   {{ etiqueta }}
   <select name="{{ nombre }}">
     <option value="">Todos</option>
@@ -6,4 +6,4 @@
       <option value="{{ opcion }}" {% if valor == opcion %}selected{% endif %}>{{ opcion }}</option>
     {% endfor %}
   </select>
-</label>
+</div>

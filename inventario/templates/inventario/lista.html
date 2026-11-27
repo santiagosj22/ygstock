@@ -57,22 +57,39 @@
     </div>
 
     <div class="filtro-fondo" id="filtro-fondo"></div>
-    <form class="panel-lateral" id="margenes" method="post" action="{% url 'inventario:margenes' %}">
-      {% csrf_token %}
-      <input type="hidden" name="siguiente" value="{{ request.get_full_path }}">
+    <aside class="panel-lateral" id="margenes">
       <div class="panel-tope">
         <strong>Aplicar %</strong>
         <button class="boton boton-secundario" id="cerrar-margenes" type="button">Cerrar</button>
       </div>
-      <p class="resumen">Mínimo y máximo arman el rango sobre el costo. La renta es el mínimo menos el costo y la difusión es ese mínimo más 1%.</p>
-      <label class="campo">Mínimo
-        <input name="minimo" type="number" min="0" max="100" step="0.01" value="{{ margen.porcentaje_minimo|unlocalize }}" inputmode="decimal" required>
-      </label>
-      <label class="campo">Máximo
-        <input name="maximo" type="number" min="0" max="100" step="0.01" value="{{ margen.porcentaje_maximo|unlocalize }}" inputmode="decimal" required>
-      </label>
-      <button class="boton" type="submit">Aplicar</button>
-    </form>
+      <form method="post" action="{% url 'inventario:margenes' %}">
+        {% csrf_token %}
+        <input type="hidden" name="siguiente" value="{{ request.get_full_path }}">
+        <p class="resumen">Mínimo y máximo arman el rango sobre el costo. La renta sale del margen y la difusión es ese precio más 2%.</p>
+        <label class="campo">Mínimo
+          <input name="minimo" type="number" min="0" max="100" step="0.01" value="{{ margen.porcentaje_minimo|unlocalize }}" inputmode="decimal" required>
+        </label>
+        <label class="campo">Máximo
+          <input name="maximo" type="number" min="0" max="100" step="0.01" value="{{ margen.porcentaje_maximo|unlocalize }}" inputmode="decimal" required>
+        </label>
+        <button class="boton" type="submit">Aplicar rango</button>
+      </form>
+      <form class="bloque-margen" method="post" action="{% url 'inventario:margen_vista' %}">
+        {% csrf_token %}
+        <input type="hidden" name="siguiente" value="{{ request.get_full_path }}">
+        <p class="resumen">
+          {% if hay_filtros %}
+            Margen para los {{ filtrados }} productos de esta vista, en todas las páginas. Reemplaza el margen que ya tuviera cada uno.
+          {% else %}
+            Sin filtros, el margen se aplica a los {{ filtrados }} productos del corte. Reemplaza el margen que ya tuviera cada uno.
+          {% endif %}
+        </p>
+        <label class="campo">Margen %
+          <input name="margen" type="number" min="0" max="1000" step="0.01" inputmode="decimal" required>
+        </label>
+        <button class="boton" type="submit" {% if not filtrados %}disabled{% endif %}>Aplicar a la vista</button>
+      </form>
+    </aside>
     <form class="filtros" id="filtros" method="get">
       <div class="filtros-tope solo-en-movil">
         <strong>Filtros</strong>
@@ -82,7 +99,7 @@
         Buscar
         <input type="search" name="q" value="{{ filtros.q }}" placeholder="Código, nombre o color">
       </label>
-      <label class="campo">
+      <div class="campo">
         Corte
         <select name="carga">
           {% for opcion in cargas %}
@@ -91,8 +108,8 @@
             </option>
           {% endfor %}
         </select>
-      </label>
-      <label class="campo">
+      </div>
+      <div class="campo">
         Bodega
         <select name="bodega">
           <option value="">Todas</option>
@@ -100,14 +117,14 @@
             <option value="{{ opcion.valor }}" {% if filtros.bodega == opcion.valor %}selected{% endif %}>{{ opcion.etiqueta }}</option>
           {% endfor %}
         </select>
-      </label>
+      </div>
       {% include "inventario/_select.html" with nombre="clase" etiqueta="Clase" valor=filtros.clase opciones=opciones.clases %}
       {% include "inventario/_select.html" with nombre="color" etiqueta="Color" valor=filtros.color opciones=opciones.colores %}
       {% include "inventario/_select.html" with nombre="red" etiqueta="Red" valor=filtros.red opciones=opciones.redes %}
       {% include "inventario/_select.html" with nombre="tipo_sim" etiqueta="SIM" valor=filtros.tipo_sim opciones=opciones.sims %}
       {% include "inventario/_select.html" with nombre="ram" etiqueta="RAM" valor=filtros.ram opciones=opciones.rams %}
       {% include "inventario/_select.html" with nombre="almacenamiento" etiqueta="Memoria" valor=filtros.almacenamiento opciones=opciones.memorias %}
-      <label class="campo">
+      <div class="campo">
         Precio
         <select name="variacion">
           <option value="">Todos</option>
@@ -115,7 +132,7 @@
             <option value="{{ valor }}" {% if filtros.variacion == valor %}selected{% endif %}>{{ etiqueta }}</option>
           {% endfor %}
         </select>
-      </label>
+      </div>
       <div class="filtros-acciones">
         <button class="boton" type="submit">Filtrar</button>
         {% if hay_filtros %}
@@ -200,6 +217,10 @@
           <strong>Mensaje</strong>
           <button class="boton boton-secundario" id="cerrar-mensaje" type="button">Cerrar</button>
         </div>
+        <div class="agrupar" role="group" aria-label="Cómo agrupar el listado">
+          <button class="boton boton-secundario activo" id="agrupar-referencia" type="button" aria-pressed="true">Agrupar por referencia</button>
+          <button class="boton boton-secundario" id="agrupar-clase" type="button" aria-pressed="false">Agrupar por clase</button>
+        </div>
         <textarea class="texto-mensaje" id="texto-mensaje" rows="14" aria-label="Mensaje de difusión"></textarea>
         <a class="boton boton-whatsapp" id="enviar-whatsapp" target="_blank" rel="noopener">WhatsApp</a>
       </aside>
@@ -208,7 +229,7 @@
           <strong id="editar-nombre">Editar precios</strong>
           <button class="boton boton-secundario" id="cerrar-precios" type="button">Cerrar</button>
         </div>
-        <p class="resumen">El costo llega del Excel. Mínimo y máximo son el rango: cambian con Aplicar %. Si mueves el margen, la renta o la difusión, se recalculan entre sí.</p>
+        <p class="resumen">El costo llega del Excel. Mínimo y máximo son el rango: cambian con Aplicar %. La difusión es el precio del margen más 2%.</p>
         <p class="costo" id="editar-costo"></p>
         <p class="error-precio" id="error-precio"></p>
         <label class="campo">Difusión
@@ -229,6 +250,7 @@
       </section>
     {% endif %}
 
+    <script src="{% static 'inventario/mensaje.js' %}?v=3"></script>
     <script src="{% static 'inventario/jquery.min.js' %}"></script>
     <script src="{% static 'inventario/select2.min.js' %}"></script>
     <script>
@@ -264,7 +286,9 @@
         if (!window.jQuery || jQuery("#filtros select").first().hasClass("select2-hidden-accessible")) {
           return;
         }
-        jQuery("#filtros select").select2({
+        jQuery("#filtros select").on("mousedown", function (event) {
+          event.preventDefault();
+        }).select2({
           width: "100%",
           dropdownParent: jQuery("#filtros"),
           language: { noResults: function () { return "Sin resultados"; } }
@@ -274,9 +298,17 @@
         iniciarSelect();
       }
 
-      function lineaDe(el) {
-        const detalle = [el.dataset.color, el.dataset.almacenamiento, el.dataset.sim].filter(Boolean).join(" · ");
-        return [el.dataset.nombre, detalle, el.dataset.precio].filter(Boolean).join("\n");
+      function fichaDe(el) {
+        return {
+          nombre: el.dataset.nombre,
+          descripcion: el.dataset.descripcion,
+          color: el.dataset.color,
+          ram: el.dataset.ram,
+          almacenamiento: el.dataset.almacenamiento,
+          sim: el.dataset.sim,
+          clase: el.dataset.clase,
+          precio: el.dataset.precio
+        };
       }
       function seleccionados() {
         const unicos = new Map();
@@ -300,7 +332,7 @@
         if (!barra) return;
         barra.classList.toggle("visible", unicos.size > 0);
         conteo.textContent = unicos.size === 1 ? "1 seleccionado" : unicos.size + " seleccionados";
-        const texto = [...unicos.values()].map(lineaDe).join("\n\n");
+        const texto = window.mensajeDifusion([...unicos.values()].map(fichaDe), modoMensaje);
         if (textoMensaje) textoMensaje.value = texto;
         publicarWhatsapp(texto);
         const todo = document.getElementById("marcar-todo");
@@ -324,6 +356,25 @@
           actualizarDifusion();
         });
       }
+      let modoMensaje = "referencia";
+      function elegirAgrupacion(modo) {
+        modoMensaje = modo;
+        const porReferencia = document.getElementById("agrupar-referencia");
+        const porClase = document.getElementById("agrupar-clase");
+        if (porReferencia) {
+          porReferencia.classList.toggle("activo", modo === "referencia");
+          porReferencia.setAttribute("aria-pressed", modo === "referencia" ? "true" : "false");
+        }
+        if (porClase) {
+          porClase.classList.toggle("activo", modo === "clase");
+          porClase.setAttribute("aria-pressed", modo === "clase" ? "true" : "false");
+        }
+        actualizarDifusion();
+      }
+      const botonReferencia = document.getElementById("agrupar-referencia");
+      const botonClase = document.getElementById("agrupar-clase");
+      if (botonReferencia) botonReferencia.addEventListener("click", function () { elegirAgrupacion("referencia"); });
+      if (botonClase) botonClase.addEventListener("click", function () { elegirAgrupacion("clase"); });
       const abrirMensaje = document.getElementById("abrir-mensaje");
       if (abrirMensaje && panelMensaje) {
         abrirMensaje.addEventListener("click", function () {
@@ -366,6 +417,7 @@
             }
           });
         }
+        actualizarDifusion();
       }
       function guardarPrecio(input) {
         const codigo = input.dataset.codigo || (panelPrecios && panelPrecios.dataset.codigo);
